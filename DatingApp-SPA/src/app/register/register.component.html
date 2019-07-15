@@ -1,0 +1,30 @@
+<!-- register page html -->
+
+<form #registerForm="ngForm" (ngSubmit)="Register()">
+
+    <h2 class="text-center text-primary">Sign Up</h2>
+
+    <hr>
+    <div id="theRow" class="row">
+        <div class="col-md-12">
+            <div class="form-group">
+                <input type="text" class="form-control" required name="username" [(ngModel)]="model.username" placeholder="Username">
+            </div>
+
+            <div class="form-group">
+                <input type="password" class="form-control" required name="password" [(ngModel)]="model.password" placeholder="Password">
+            </div>
+
+        </div>
+    </div>
+    <div class="form-group text-center">
+        <button class="btn btn-success mr-2" type="submit">Register</button>
+        <button class="btn btn-default" type="button" (click)="cancel()">Cancel</button>
+    </div>
+</form>
+<!-- <style>
+    #theRow {
+        width: 500px;
+        margin: 0 auto;
+    }
+</style> -->
