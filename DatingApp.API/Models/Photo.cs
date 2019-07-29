@@ -9,6 +9,7 @@ namespace DatingApp.API.Models
         public string Url {get;set;}
 
         public string Desctiption {get;set;}
+        public string PublicId {get;set;}
 
         public DateTime DateAdded {get;set;}
 
