@@ -19,7 +19,6 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace DatingApp.API.Controllers
 {
-
     [Authorize]
     [Route("api/users/{userId}/photos")]
     [ApiController]
@@ -31,12 +30,12 @@ namespace DatingApp.API.Controllers
 
         private Cloudinary _cloudinary;
         public PhotosController(IDatingRepository repo, IMapper mapper, IOptions<CloudinarySettings> cloudinaryConfig)
-       {
+        {
             _repo = repo;
             _mapper = mapper;
             _cloudinaryConfig = cloudinaryConfig;
-            
-            Account acc = new Account (
+
+            Account acc = new Account(
                 _cloudinaryConfig.Value.CloudName,
                  cloudinaryConfig.Value.ApiKey,
                  cloudinaryConfig.Value.ApiSecret
@@ -44,24 +43,38 @@ namespace DatingApp.API.Controllers
             );
             _cloudinary = new Cloudinary(acc);
         }
+
+
+        [HttpGet("{id}", Name = "GetPhoto")]
+        public async Task<IActionResult> GetPhoto(int id)
+        {
+            var photoRepo = await _repo.GetPhoto(id);
+
+            var photo = _mapper.Map<PhotoReturnDto>(photoRepo);
+
+            return Ok(photo);
+        }
+
+
         [HttpPost]
-        public async Task<IActionResult> AddPhotoForUser(int userId, PhotoCreationDto photoCreation)
+        public async Task<IActionResult> AddPhotoForUser(int userId, [FromForm] PhotoCreationDto photoCreation)
         {
             bool success = false;
-            if(userId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
+            if (userId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
             {
                 return Unauthorized();
             }
             var userRepo = await _repo.GetUser(userId);
             var file = photoCreation.file;
             var uploadResult = new ImageUploadResult();
-            if(file.Length > 0)
+            if (file.Length > 0)
             {
-                using(var stream = file.OpenReadStream()) {
+                using (var stream = file.OpenReadStream())
+                {
                     var uploadParams = new ImageUploadParams()
                     {
                         File = new FileDescription(file.Name, stream),
-                        Transformation = new Transformation().Width(500).Height(500).Crop("fill").Gravity("face")                     
+                        Transformation = new Transformation().Width(500).Height(500).Crop("fill").Gravity("face")
                     };
                     uploadResult = _cloudinary.Upload(uploadParams);
                 }
@@ -69,15 +82,89 @@ namespace DatingApp.API.Controllers
             photoCreation.Url = uploadResult.Uri.ToString();
             photoCreation.PublicId = uploadResult.PublicId;
             var photo = _mapper.Map<Photo>(photoCreation);
-            if(!userRepo.Photos.Any(u => u.isMain))    
+            if (!userRepo.Photos.Any(u => u.isMain))
                 photo.isMain = true;
             userRepo.Photos.Add(photo);
+
             _repo.SaveAll();
             success = true;
-            if(success){
-            return Ok();
+            if (success)
+            {
+                var photoReturn = _mapper.Map<PhotoReturnDto>(photo);
+                return CreatedAtRoute("GetPhoto", new { id = photo.Id }, photoReturn);
             }
             return BadRequest("Could not add the photo");
         }
+
+
+        [HttpPost("{id}/setMain")]
+        public async Task<IActionResult> SetMainPhoto(int userId, int id)
+        {
+            if (userId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
+            {
+                return Unauthorized();
+            }
+            var user = await _repo.GetUser(userId);
+
+            if (!user.Photos.Any(p => p.Id == id))
+            {
+                return Unauthorized();
+            }
+            var photoRepo = await _repo.GetPhoto(id);
+
+            if (photoRepo.isMain)
+                return BadRequest("Already main photo");
+
+            var currentMainPhoto = await _repo.GetMainPhoto(userId);
+
+            currentMainPhoto.isMain = false;
+
+            photoRepo.isMain = true;
+
+            _repo.SaveAll();
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePhoto(int userId, int id)
+        {
+            if (userId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
+            {
+                return Unauthorized();
+            }
+            var user = await _repo.GetUser(userId);
+
+            if (!user.Photos.Any(p => p.Id == id))
+            {
+                return Unauthorized();
+            }
+            var photoRepo = await _repo.GetPhoto(id);
+
+            if (photoRepo.isMain)
+                return BadRequest("You cannot delete your main photo");
+            if (photoRepo.PublicId != null)
+            {
+
+                var deleteParams = new DeletionParams(photoRepo.PublicId);
+
+                var result = _cloudinary.Destroy(deleteParams);
+
+                if (result.Result == "ok")
+                {
+                    _repo.Delete(photoRepo);
+                }
+            }
+            if (photoRepo.PublicId == null)
+            {
+                _repo.Delete(photoRepo);
+            }
+
+            _repo.SaveAll();
+
+            return Ok();
+        }
+
     }
 }
+

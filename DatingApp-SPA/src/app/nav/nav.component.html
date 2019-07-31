@@ -5,6 +5,7 @@
 
 
         <ul *ngIf="loggedIn()" class="navbar-nav mr-auto">
+
             <li class="nav-item" routerLinkActive="active">
                 <a class="nav-link" [routerLink]="['/members']">Matches </a>
             </li>
@@ -18,6 +19,9 @@
 
         </ul>
         <div *ngIf="loggedIn()" class="dropdown" dropdown>
+            <span class="mr-1">
+                        <img src="{{photoUrl}}">
+                      </span>
             <a class="dropdown-toggle text-light" dropdownToggle>
                     Welcome {{authService.decodedToken?.unique_name}}
                   </a>
