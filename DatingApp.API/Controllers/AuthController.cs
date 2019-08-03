@@ -38,14 +38,14 @@ namespace DatingApp.API.Controllers
                 return BadRequest("Username already taken!");
             }
 
-            var userToCreate = new User
-            {
-                Username = userDto.Username
-            };
+            var userToCreate = _mapper.Map<User>(userDto);
 
             var createdUser = await repository.Register(userToCreate, userDto.Password);
 
-            return StatusCode(201);
+            var userToReturn = _mapper.Map<UserDetailedDto>(createdUser);
+           // return CreatedAtAction("GetUser", userToReturn);
+            return CreatedAtAction("GetUser","Users", new {id = createdUser.Id}, userToReturn);
+       //   return CreatedAtRoute("GetUser", new {controller = "Users", id = createdUser.Id}, userToReturn);
 
         }
         [HttpPost("login")]
@@ -67,7 +67,7 @@ namespace DatingApp.API.Controllers
 
              var tokenDescriptor = new SecurityTokenDescriptor{
                  Subject = new ClaimsIdentity(claims),
-                 Expires = DateTime.Now.AddDays(1),
+                 Expires = DateTime.Now.AddDays(100),
                  SigningCredentials = creds
              };
 
